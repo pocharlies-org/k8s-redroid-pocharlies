@@ -1,0 +1,17 @@
+# /data del emulador: la sesion de Instagram sobrevive a reinicio del pod.
+# Backup: grupo daily-backup de Longhorn (target NFS x86, retencion 14) + snapshots diarios.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redroid-data
+  namespace: redroid
+  labels:
+    recurring-job.longhorn.io/source: enabled
+    recurring-job-group.longhorn.io/daily-backup: enabled
+    recurring-job-group.longhorn.io/default: enabled
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 16Gi

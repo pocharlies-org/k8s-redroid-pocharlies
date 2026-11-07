@@ -1,0 +1,45 @@
+# redroid (Android 13 en contenedor) + MindTheGapps + libhoudini, validado por el spike SC-1244/SC-1248 (PR k8s-socialmedia#88).
+# Imagen: redroid-script a4951b7 (-a 13.0.0 -mtg -i) construida en el x86 y subida a Harbor; el digest es la verdad.
+# args: sin esto la imagen sigue traduciendo con libndk_translation y Instagram SIGSEGA (hallazgo de SC-1248).
+# Privilegiado: autorizado por SC-3936 (nodo x86 ubuntu, namespace aislado, adb solo tailnet).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redroid
+  namespace: redroid
+  labels:
+    app: redroid
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: ubuntu
+  restartPolicy: Always
+  imagePullSecrets:
+    - name: harbor-pull
+  containers:
+    - name: android
+      image: harbor.lan.e-dani.com/homelab/redroid@sha256:a8e044c29e378c1a41c9f7a63f31e3be62a672d26f44c61fe41661a7504a9582 # tag 13.0.0-mtg-houdini-20261107
+      args: ["ro.dalvik.vm.native.bridge=libhoudini.so"]
+      securityContext:
+        privileged: true
+      resources:
+        requests:
+          cpu: 500m
+          memory: 2Gi
+        limits:
+          memory: 6Gi
+      ports:
+        - name: adb
+          containerPort: 5555
+      volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: binderfs
+          mountPath: /dev/binderfs
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: redroid-data
+    - name: binderfs
+      hostPath:
+        path: /dev/binderfs
+        type: Directory
