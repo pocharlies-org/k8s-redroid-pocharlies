@@ -1,0 +1,16 @@
+# adb para la tailnet: scrcpy/adb desde cualquier maquina del tailnet contra
+# 100.83.56.98:30555 (IP tailnet del nodo ubuntu). Nunca expuesto fuera del tailnet (NetworkPolicy).
+apiVersion: v1
+kind: Service
+metadata:
+  name: redroid-adb
+  namespace: redroid
+spec:
+  type: NodePort
+  selector:
+    app: redroid
+  ports:
+    - name: adb
+      port: 5555
+      targetPort: 5555
+      nodePort: 30555
