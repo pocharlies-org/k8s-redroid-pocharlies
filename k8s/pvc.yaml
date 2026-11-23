@@ -1,0 +1,20 @@
+# /data del emulador: persiste la sesión (sobrevive a kubectl delete pod).
+# Longhorn = storage de la casa y el que tiene backups (grupo daily-backup → NFS x86, retención 14).
+# alphalink NO es nodo Longhorn hoy: para que el volumen attachee hay que habilitarlo (etiqueta
+# storage-longhorn=true en el nodo + toleration dedicated=alpha en el DS longhorn-manager, k8s-infra).
+# El volumen es RWO: el engine corre en alphalink (donde va el pod), los réplices y el backup en los nodos Longhorn.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redroid-data
+  namespace: redroid
+  labels:
+    recurring-job.longhorn.io/source: enabled
+    recurring-job-group.longhorn.io/daily-backup: enabled
+    recurring-job-group.longhorn.io/default: enabled
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 16Gi

@@ -1,0 +1,30 @@
+# harbor-pull del ns redroid, por el patrón de la casa (ExternalSecret → ClusterSecretStore onepassword-connect).
+# alphalink no tiene /etc/rancher/k3s/registries.yaml (nodo nuevo), así que el pull de la imagen de Harbor
+# necesita credenciales en el pod; en los nodos viejos las ponía el registries.yaml del nodo.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: harbor-runtime-pull-bootstrap
+  namespace: redroid
+  labels:
+    app.kubernetes.io/managed-by: external-secrets
+    security.e-dani.com/rotation-class: runtime-registry
+spec:
+  data:
+    - remoteRef:
+        key: infra-harbor-k8s-runtime-pull
+        property: dockerconfigjson
+      secretKey: .dockerconfigjson
+  refreshInterval: 24h
+  refreshPolicy: OnChange
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: onepassword-connect
+  target:
+    creationPolicy: Owner
+    deletionPolicy: Retain
+    name: harbor-pull
+    template:
+      engineVersion: v2
+      mergePolicy: Replace
+      type: kubernetes.io/dockerconfigjson

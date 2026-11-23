@@ -1,0 +1,57 @@
+# redroid (Android 13 + MindTheGapps + libhoudini) en el nodo dedicado alphalink (cgroup v2).
+# Imagen fijada por digest; args sin esto Instagram SIGSEGA con el puente ndk (SC-1248).
+#
+# POR QUÉ se monta /sys/fs/cgroup del host (el hallazgo que destrabó SC-1212, SC-1211 com 58962):
+# el driver systemd-cgroup de k3s cuelga el cgroup del contenedor de kubepods.slice/…; libprocessgroup
+# no puede crear sus grupos uid_X/pid_Y ahí → createProcessGroup falla → surfaceflinger fatal → Android
+# se auto-apaga a ~2 s. Mountar la jerarquía cgroup del host le da a Android una raíz escribible
+# (equivalente al cgroupns=host que el spike validó con `k3s ctr run --privileged`, boot_completed=1).
+# Probado en vivo en alphalink: con este mount desaparece el error de createProcessGroup (SC-1211 com 58962).
+#
+# privileged SOLO aquí (ns redroid, PSS enforce=privileged) y SOLO en alphalink (nodeSelector + toleration).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redroid
+  namespace: redroid
+  labels:
+    app: redroid
+spec:
+  restartPolicy: Always
+  nodeSelector:
+    kubernetes.io/hostname: alphalink
+  tolerations:
+    - {key: dedicated, operator: Equal, value: alpha, effect: NoSchedule}
+  imagePullSecrets:
+    - name: harbor-pull
+  containers:
+    - name: android
+      image: harbor.lan.e-dani.com/homelab/redroid@sha256:a8e044c29e378c1a41c9f7a63f31e3be62a672d26f44c61fe41661a7504a9582 # tag 13.0.0-mtg-houdini-20261107
+      imagePullPolicy: IfNotPresent
+      args: ["ro.dalvik.vm.native.bridge=libhoudini.so"]
+      securityContext:
+        privileged: true
+      resources:
+        requests:
+          cpu: "1"
+          memory: 2Gi
+        limits:
+          memory: 6Gi
+      ports:
+        - name: adb
+          containerPort: 5555
+      volumeMounts:
+        - {name: data, mountPath: /data}
+        - {name: binderfs, mountPath: /dev/binderfs}
+        - {name: cgroup, mountPath: /sys/fs/cgroup}
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: redroid-data
+    - name: binderfs
+      hostPath:
+        path: /dev/binderfs
+        type: Directory
+    - name: cgroup
+      hostPath:
+        path: /sys/fs/cgroup
