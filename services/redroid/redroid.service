@@ -1,0 +1,21 @@
+[Unit]
+Description=redroid (Android 13 + GMS + houdini) fuera del CRI, en alphalink
+# k3s-agent: ctr habla con el containerd de k3s. After para esperar el socket en el
+# arranque; NO BindsTo/PartOf: al reiniciar k3s-agent el containerd cae y el `ctr run`
+# en primer plano sale, y Restart lo relanza con /data intacto (hostPath).
+After=network-online.target k3s-agent.service
+Wants=k3s-agent.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/redroid-run.sh
+# adb por la tailnet; mejor esfuerzo (si el contenedor aún no tiene IP, la regla
+# se pone en el siguiente relanzamiento).
+ExecStartPost=-/usr/local/bin/redroid-adb-nat.sh
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
